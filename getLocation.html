@@ -14,11 +14,22 @@
     <br><br>
 
     <h4>Collected Samples</h4>
-    <ul id="samples-list"></ul>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Latitude</th>
+                <th>Longitude</th>
+                <th>Accuracy (m)</th>
+            </tr>
+        </thead>
+        <tbody id="samples-table"></tbody>
+    </table>
 
     <h4>Mean Coordinates (After 10 sec)</h4>
     <p><strong>Latitude:</strong> <span id="mean-lat">-</span></p>
     <p><strong>Longitude:</strong> <span id="mean-lon">-</span></p>
+    <p><strong>Mean Accuracy:</strong> <span id="mean-acc">-</span> meters</p>
 
     <a href="index.html" class="btn btn-secondary">Go Back</a>
 
@@ -28,37 +39,45 @@
         function startCollection() {
             let latitudes = [];
             let longitudes = [];
+            let accuracies = [];
             let startTime = Date.now();
             let timer = 10;  // 10-second countdown
+            let sampleCount = 0;
 
-            document.getElementById("samples-list").innerHTML = "";  // Clear previous data
+            document.getElementById("samples-table").innerHTML = "";  // Clear previous data
             document.getElementById("mean-lat").textContent = "-";
             document.getElementById("mean-lon").textContent = "-";
+            document.getElementById("mean-acc").textContent = "-";
             document.getElementById("start-btn").disabled = true;
 
+            // Start Countdown Timer
             const timerInterval = setInterval(() => {
                 timer--;
                 document.getElementById("timer").textContent = timer;
                 if (timer <= 0) clearInterval(timerInterval);
             }, 1000);
 
+            // Collect GPS Data for 10 seconds
             const geoWatch = navigator.geolocation.watchPosition(position => {
                 if (Date.now() - startTime > 10000) {
                     navigator.geolocation.clearWatch(geoWatch);
-                    computeMean(latitudes, longitudes);
+                    computeMean(latitudes, longitudes, accuracies);
                     document.getElementById("start-btn").disabled = false;
                     return;
                 }
 
                 let lat = position.coords.latitude.toFixed(8);
                 let lon = position.coords.longitude.toFixed(8);
+                let acc = position.coords.accuracy.toFixed(2);
 
                 latitudes.push(parseFloat(lat));
                 longitudes.push(parseFloat(lon));
+                accuracies.push(parseFloat(acc));
 
-                let sampleEntry = document.createElement("li");
-                sampleEntry.textContent = `Lat: ${lat}, Lon: ${lon}`;
-                document.getElementById("samples-list").appendChild(sampleEntry);
+                sampleCount++;
+                let row = document.createElement("tr");
+                row.innerHTML = `<td>${sampleCount}</td><td>${lat}</td><td>${lon}</td><td>${acc}</td>`;
+                document.getElementById("samples-table").appendChild(row);
 
             }, error => {
                 console.error("Error getting location:", error.message);
@@ -68,7 +87,7 @@
             });
         }
 
-        function computeMean(latitudes, longitudes) {
+        function computeMean(latitudes, longitudes, accuracies) {
             if (latitudes.length === 0 || longitudes.length === 0) {
                 alert("No GPS data collected.");
                 return;
@@ -76,9 +95,11 @@
 
             let latMean = (latitudes.reduce((sum, lat) => sum + lat, 0) / latitudes.length).toFixed(8);
             let lonMean = (longitudes.reduce((sum, lon) => sum + lon, 0) / longitudes.length).toFixed(8);
+            let accMean = (accuracies.reduce((sum, acc) => sum + acc, 0) / accuracies.length).toFixed(2);
 
             document.getElementById("mean-lat").textContent = latMean;
             document.getElementById("mean-lon").textContent = lonMean;
+            document.getElementById("mean-acc").textContent = accMean + " meters";
         }
     </script>
 
