@@ -7,111 +7,78 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="container mt-4">
-
-    <a href="./index.html" class="btn btn-primary">Go Back</a>
-    <h2 class="mt-3">GPS Data Collection</h2>
     
-    <button id="start-btn" class="btn btn-success">Start Collection</button>
-    <h3 id="timer" class="mt-3">Timer: 10s</h3>
+    <h2>GPS Data Collection</h2>
+    <p><strong>Timer:</strong> <span id="timer">10</span> sec</p>
+    <button class="btn btn-primary" id="start-btn">Start Collection</button>
+    <br><br>
 
-    <h4>Collected GPS Samples:</h4>
-    <table class="table table-bordered">
-        <thead>
-            <tr>
-                <th>#</th>
-                <th>Latitude</th>
-                <th>Longitude</th>
-                <th>Accuracy (m)</th>
-            </tr>
-        </thead>
-        <tbody id="gps-table-body"></tbody>
-    </table>
+    <h4>Collected Samples</h4>
+    <ul id="samples-list"></ul>
 
-    <h4>Mean Coordinates:</h4>
-    <p id="mean-coordinates">Waiting for data...</p>
+    <h4>Mean Coordinates (After 10 sec)</h4>
+    <p><strong>Latitude:</strong> <span id="mean-lat">-</span></p>
+    <p><strong>Longitude:</strong> <span id="mean-lon">-</span></p>
+
+    <a href="index.html" class="btn btn-secondary">Go Back</a>
 
     <script>
-        let latitudes = [];
-        let longitudes = [];
-        let accuracies = [];
-        let sampleCount = 0;
-        let collecting = false;
+        document.getElementById("start-btn").addEventListener("click", startCollection);
 
-        document.getElementById("start-btn").addEventListener("click", () => {
-            if (!navigator.geolocation) {
-                alert("Geolocation is not supported by your browser.");
-                return;
-            }
+        function startCollection() {
+            let latitudes = [];
+            let longitudes = [];
+            let startTime = Date.now();
+            let timer = 10;  // 10-second countdown
 
-            // Reset data
-            latitudes = [];
-            longitudes = [];
-            accuracies = [];
-            sampleCount = 0;
-            document.getElementById("gps-table-body").innerHTML = "";
-            document.getElementById("mean-coordinates").textContent = "Collecting data...";
+            document.getElementById("samples-list").innerHTML = "";  // Clear previous data
+            document.getElementById("mean-lat").textContent = "-";
+            document.getElementById("mean-lon").textContent = "-";
             document.getElementById("start-btn").disabled = true;
 
-            let timeLeft = 10;
-            document.getElementById("timer").textContent = `Timer: ${timeLeft}s`;
-
-            // Start timer
-            let timer = setInterval(() => {
-                timeLeft--;
-                document.getElementById("timer").textContent = `Timer: ${timeLeft}s`;
-
-                if (timeLeft <= 0) {
-                    clearInterval(timer);
-                    collecting = false;
-                    computeMean();
-                    document.getElementById("start-btn").disabled = false;
-                }
+            const timerInterval = setInterval(() => {
+                timer--;
+                document.getElementById("timer").textContent = timer;
+                if (timer <= 0) clearInterval(timerInterval);
             }, 1000);
 
-            collecting = true;
-            collectGPSData();
-        });
-
-        function collectGPSData() {
-            if (!collecting) return;
-
-            navigator.geolocation.watchPosition(position => {
-                if (!collecting) return; // Stop collecting if timer is done
+            const geoWatch = navigator.geolocation.watchPosition(position => {
+                if (Date.now() - startTime > 10000) {
+                    navigator.geolocation.clearWatch(geoWatch);
+                    computeMean(latitudes, longitudes);
+                    document.getElementById("start-btn").disabled = false;
+                    return;
+                }
 
                 let lat = position.coords.latitude.toFixed(8);
                 let lon = position.coords.longitude.toFixed(8);
-                let accuracy = position.coords.accuracy.toFixed(2);
 
                 latitudes.push(parseFloat(lat));
                 longitudes.push(parseFloat(lon));
-                accuracies.push(parseFloat(accuracy));
 
-                sampleCount++;
-                addToTable(sampleCount, lat, lon, accuracy);
+                let sampleEntry = document.createElement("li");
+                sampleEntry.textContent = `Lat: ${lat}, Lon: ${lon}`;
+                document.getElementById("samples-list").appendChild(sampleEntry);
+
             }, error => {
                 console.error("Error getting location:", error.message);
             }, {
                 enableHighAccuracy: true,
-                timeout: 1000, // 1 second timeout
-                maximumAge: 0  // Always get fresh data
+                maximumAge: 0
             });
         }
 
-        function addToTable(count, lat, lon, accuracy) {
-            let row = `<tr>
-                <td>${count}</td>
-                <td>${lat}</td>
-                <td>${lon}</td>
-                <td>${accuracy} m</td>
-            </tr>`;
-            document.getElementById("gps-table-body").innerHTML += row;
-        }
+        function computeMean(latitudes, longitudes) {
+            if (latitudes.length === 0 || longitudes.length === 0) {
+                alert("No GPS data collected.");
+                return;
+            }
 
-        function computeMean() {
-            let latMean = (latitudes.reduce((sum, val) => sum + val, 0) / latitudes.length).toFixed(8);
-            let lonMean = (longitudes.reduce((sum, val) => sum + val, 0) / longitudes.length).toFixed(8);
+            let latMean = (latitudes.reduce((sum, lat) => sum + lat, 0) / latitudes.length).toFixed(8);
+            let lonMean = (longitudes.reduce((sum, lon) => sum + lon, 0) / longitudes.length).toFixed(8);
 
-            document.getElementById("mean-coordinates").textContent = `Mean Latitude: ${latMean}, Mean Longitude: ${lonMean}`;
+            document.getElementById("mean-lat").textContent = latMean;
+            document.getElementById("mean-lon").textContent = lonMean;
         }
     </script>
 
